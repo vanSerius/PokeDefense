@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1a1c2c">
+<title>PokeDefense – Pokémon Tower Defense</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="assets/sprites/static/25.png">
+</head>
+<body>
+<div id="rotate-overlay">
+  <div class="rotate-icon">📱↻</div>
+  <div>Bitte drehe dein Gerät<br>ins Querformat!</div>
+</div>
+
+<div id="app" class="hidden">
+  <div id="topbar">
+    <div class="tb-group">
+      <span class="tb-item" id="tb-hearts">❤ 20</span>
+      <span class="tb-item" id="tb-gold">◉ 0</span>
+    </div>
+    <div class="tb-group">
+      <span class="tb-item" id="tb-map">Map 1/20</span>
+      <span class="tb-item" id="tb-wave">Welle 0/5</span>
+    </div>
+    <div class="tb-group">
+      <button class="tb-btn" id="btn-wave">▶ Welle</button>
+      <button class="tb-btn" id="btn-speed">1×</button>
+      <button class="tb-btn" id="btn-pause">⏸</button>
+      <button class="tb-btn" id="btn-mute">🔊</button>
+    </div>
+  </div>
+  <div id="stage">
+    <canvas id="game"></canvas>
+  </div>
+  <div id="buildbar">
+    <div id="towerbar"></div>
+    <div id="towerpanel" class="hidden"></div>
+  </div>
+</div>
+
+<div id="screens"></div>
+
+<div id="loading">
+  <div class="load-ball"></div>
+  <div id="load-text">Lade Pokémon…</div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
