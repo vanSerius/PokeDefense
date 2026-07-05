@@ -52,7 +52,16 @@ export class Hud {
     this.set('hearts', this.el.hearts, `❤ ${session.run.hearts}`);
     this.set('gold', this.el.gold, `◉ ${Math.floor(session.gold)}`);
     this.set('map', this.el.map, `${session.map.name} (${session.mapNo}/20)`);
-    this.set('wave', this.el.wave, `Welle ${Math.min(session.waveIdx + 1, session.waveCount)}/${session.waveCount}`);
+    // Vorschau: Typ der nächsten Welle anzeigen, solange sie nicht läuft
+    let waveLabel = `Welle ${Math.min(session.waveIdx + 1, session.waveCount)}/${session.waveCount}`;
+    if (session.state === 'build' || session.state === 'between') {
+      const next = session.waves[session.waveIdx + 1];
+      if (next) {
+        const names = { mixed: 'Gemischt', swarm: '🐛 Schwarm!', fast: '💨 Schnell!', tank: '🛡 Panzer!', fly: '🕊 Flieger!', boss: '💀 BOSS!' };
+        waveLabel = `Welle ${session.waveIdx + 2}/${session.waveCount}: ${names[next.archetype] || ''}`;
+      }
+    }
+    this.set('wave', this.el.wave, waveLabel);
 
     // Wellen-Button
     let waveText, waveCls = 'tb-btn';

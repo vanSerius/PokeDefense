@@ -37,8 +37,8 @@ export function advanceRun(run, sessionGold) {
   run.mapIndex++;
   run.gold = Math.round(BASE_GOLD * (1 + 0.15 * run.mapIndex) + sessionGold * GOLD_CARRY);
   const meta = getMeta();
-  const best = meta.bestMap[run.trainer] || 0;
-  if (run.mapIndex + 1 > best) { meta.bestMap[run.trainer] = run.mapIndex + 1; saveMeta(); }
+  const reached = Math.min(run.mapIndex + 1, MAP_COUNT);
+  if (reached > (meta.bestMap[run.trainer] || 0)) { meta.bestMap[run.trainer] = reached; saveMeta(); }
   if (run.mapIndex >= MAP_COUNT) return 'victory';
   saveRun(run);
   return 'next';
