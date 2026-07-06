@@ -23,16 +23,16 @@ function poolFor(mapNo) {
 const ARCHETYPES = ['mixed', 'swarm', 'fast', 'tank', 'fly'];
 
 function wavesCount(mapNo) {
-  if (mapNo >= 20) return 8;
-  if (mapNo >= 15) return 8;
-  if (mapNo >= 10) return 7;
-  if (mapNo >= 5) return 6;
-  return 5;
+  return 6 + Math.floor((mapNo - 1) / 5); // 6 → 9 Wellen
 }
 
 // HP-Skalierung über den Run
 export function hpScale(mapNo, waveNo) {
-  return Math.pow(1.13, mapNo - 1) * (1 + 0.10 * (waveNo - 1));
+  return Math.pow(1.23, mapNo - 1) * (1 + 0.12 * (waveNo - 1));
+}
+// Gegner werden auf späteren Maps auch schneller
+export function speedScale(mapNo) {
+  return 1 + 0.018 * (mapNo - 1);
 }
 // Kopfgeld wächst mit, damit man auf späteren Maps genug für Evos hat
 export function bountyScale(mapNo) {
@@ -58,24 +58,24 @@ export function generateWaves(mapNo, seed) {
     if (arch === 'swarm') {
       const weak = pool.filter((k) => ENEMIES[k].hp <= 40);
       const key = pick(rng, weak.length ? weak : pool);
-      groups.push({ enemy: key, count: Math.round(budget * 1.8), gap: 0.45, hpMult: hpM * 0.6, speedMult: 1 });
+      groups.push({ enemy: key, count: Math.round(budget * 1.8), gap: 0.45, hpMult: hpM * 0.6, speedMult: speedScale(mapNo) });
     } else if (arch === 'fast') {
       const fast = pool.filter((k) => ENEMIES[k].speed >= 70);
       const key = pick(rng, fast.length ? fast : pool);
-      groups.push({ enemy: key, count: budget, gap: 0.7, hpMult: hpM * 0.85, speedMult: 1.25 });
+      groups.push({ enemy: key, count: budget, gap: 0.7, hpMult: hpM * 0.85, speedMult: Math.min(1.5, 1.25 * speedScale(mapNo)) });
     } else if (arch === 'tank') {
       const tanks = pool.filter((k) => ENEMIES[k].hp >= 60);
       const key = pick(rng, tanks.length ? tanks : pool);
-      groups.push({ enemy: key, count: Math.max(3, Math.round(budget * 0.55)), gap: 1.5, hpMult: hpM * 1.7, speedMult: 0.85 });
+      groups.push({ enemy: key, count: Math.max(3, Math.round(budget * 0.55)), gap: 1.5, hpMult: hpM * 1.7, speedMult: 0.85 * speedScale(mapNo) });
     } else if (arch === 'fly') {
       const fly = pool.filter((k) => ENEMIES[k].move === 'fly');
       const key = fly.length ? pick(rng, fly) : pick(rng, pool);
-      groups.push({ enemy: key, count: budget, gap: 0.8, hpMult: hpM, speedMult: 1.1 });
+      groups.push({ enemy: key, count: budget, gap: 0.8, hpMult: hpM, speedMult: Math.min(1.45, 1.1 * speedScale(mapNo)) });
     } else {
       // mixed: 2–3 Gruppen verschiedener Gegner
       const kinds = shuffle(rng, pool).slice(0, 2 + (rng() < 0.5 ? 1 : 0));
       for (const key of kinds) {
-        groups.push({ enemy: key, count: Math.max(2, Math.round(budget / kinds.length)), gap: 0.9, hpMult: hpM, speedMult: 1 });
+        groups.push({ enemy: key, count: Math.max(2, Math.round(budget / kinds.length)), gap: 0.9, hpMult: hpM, speedMult: speedScale(mapNo) });
       }
     }
 
@@ -86,10 +86,10 @@ export function generateWaves(mapNo, seed) {
     waves.push({ groups, archetype: arch });
   }
 
-  // Boss-Welle (Map 10 & 20) als eigene Extra-Welle
+  // Boss-Welle (Map 10 & 20) als eigene Extra-Welle – Bosse skalieren mit
   if (map.boss) {
     waves.push({
-      groups: [{ enemy: map.boss, count: 1, gap: 0, hpMult: 1, speedMult: 1, boss: true }],
+      groups: [{ enemy: map.boss, count: 1, gap: 0, hpMult: hpScale(mapNo, 1), speedMult: 1, boss: true }],
       archetype: 'boss',
     });
   }

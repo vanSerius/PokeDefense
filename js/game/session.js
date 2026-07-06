@@ -1,6 +1,6 @@
 // Session: eine Map-Runde. Verwaltet Gegner, Tower, Projektile, Wellen,
 // Gold & Herzen. Die Run-übergreifenden Daten stecken in `run` (state.js).
-import { TILE, COLS, ROWS, WAVE_BONUS, SELL_REFUND, BOSS_HEART_DMG } from '../config.js';
+import { TILE, COLS, ROWS, WAVE_BONUS, SELL_REFUND, BOSS_HEART_DMG, TEAM_CAP } from '../config.js';
 import { MAPS, buildPath, pathCells, pointAt } from '../data/maps.js';
 import { ENEMIES } from '../data/enemies.js';
 import { LINES } from '../data/pokemon.js';
@@ -39,6 +39,8 @@ export class Session {
     this.gold = run.gold;
     this.enemies = [];
     this.towers = [];
+    // Team-Bank: mitgebrachte Pokémon aus vorherigen Maps (gratis platzierbar)
+    this.bench = (run.team || []).map((u) => ({ ...u }));
     this.projectiles = [];
     this.mines = [];
     this.clouds = [];
@@ -107,9 +109,12 @@ export class Session {
     return true;
   }
 
+  get teamSize() { return this.towers.length + this.bench.length; }
+
   build(lineKey, c, r) {
     const line = LINES[lineKey];
     if (!line || !this.canBuildAt(c, r) || this.gold < line.cost) return null;
+    if (this.teamSize >= TEAM_CAP) { this.toast(`Team voll (max. ${TEAM_CAP})!`); return null; }
     const slot = this.roster().find((s) => s.line === lineKey);
     if (!slot || !this.isUnlocked(slot)) return null;
     this.gold -= line.cost;
@@ -117,6 +122,18 @@ export class Session {
     this.towers.push(t);
     dexAdd('dexBuilt', t.stage.dex);
     this.particles.burst(t.x, t.y, '#ffcd75', 10, 80);
+    sfx.build();
+    return t;
+  }
+
+  // Team-Mitglied aus der Bank gratis aufstellen
+  buildFromBench(idx, c, r) {
+    const unit = this.bench[idx];
+    if (!unit || !this.canBuildAt(c, r)) return null;
+    this.bench.splice(idx, 1);
+    const t = new Tower(unit.lineKey, c, r, unit);
+    this.towers.push(t);
+    this.particles.burst(t.x, t.y, '#41a6f6', 10, 80);
     sfx.build();
     return t;
   }

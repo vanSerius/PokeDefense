@@ -14,3 +14,4 @@ export const SELL_REFUND = 0.7;  // Anteil beim Verkaufen
 
 export const MAP_COUNT = 20;
 export const SPEEDS = [1, 2, 3];
+export const TEAM_CAP = 12;      // max. Pokémon im Team (Feld + Bank)

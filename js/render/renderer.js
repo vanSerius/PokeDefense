@@ -28,67 +28,281 @@ export function renderMapBackground(session) {
   const cv = document.createElement('canvas');
   cv.width = W; cv.height = H;
   const g = cv.getContext('2d');
-  const biome = BIOMES[session.map.biome];
+  const biomeKey = session.map.biome;
+  const biome = BIOMES[biomeKey];
   const rng = makeRng(session.run.seed + session.mapNo * 999);
+  const cellFree = (x, y) => {
+    const k = Math.floor(x / TILE) + ',' + Math.floor(y / TILE);
+    return !session.pathSet.has(k);
+  };
 
-  // Boden: Schachbrett + Sprenkel
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      g.fillStyle = (c + r) % 2 === 0 ? biome.ground : biome.ground2;
-      g.fillRect(c * TILE, r * TILE, TILE, TILE);
-    }
-  }
-  for (let i = 0; i < 260; i++) {
+  // 1) Grundfarbe + organische Farbflecken (statt Schachbrett)
+  g.fillStyle = biome.ground;
+  g.fillRect(0, 0, W, H);
+  for (let i = 0; i < 110; i++) {
     const x = rng() * W, y = rng() * H;
-    g.fillStyle = rng() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.07)';
-    g.fillRect(x, y, 3 + rng() * 4, 3 + rng() * 4);
-  }
-
-  // Pfad
-  const pts = session.path.pts;
-  g.lineJoin = 'round'; g.lineCap = 'round';
-  g.strokeStyle = biome.pathEdge;
-  g.lineWidth = TILE * 0.78;
-  g.beginPath();
-  g.moveTo(pts[0].x, pts[0].y);
-  for (const p of pts) g.lineTo(p.x, p.y);
-  g.stroke();
-  g.strokeStyle = biome.path;
-  g.lineWidth = TILE * 0.62;
-  g.stroke();
-  // Pfad-Textur: Steinchen
-  for (let d = 12; d < session.path.total; d += 26) {
-    const p = pointAt(session.path, d);
-    g.fillStyle = 'rgba(0,0,0,0.1)';
-    const ox = (rng() - 0.5) * 26, oy = (rng() - 0.5) * 26;
+    const r = 24 + rng() * 90;
+    g.globalAlpha = 0.05 + rng() * 0.09;
+    g.fillStyle = rng() < 0.55 ? biome.ground2 : biome.groundLight;
     g.beginPath();
-    g.arc(p.x + ox, p.y + oy, 2 + rng() * 2.5, 0, Math.PI * 2);
+    g.ellipse(x, y, r, r * (0.45 + rng() * 0.5), rng() * Math.PI, 0, Math.PI * 2);
     g.fill();
   }
+  g.globalAlpha = 1;
 
-  // Spawn-Portal (Höhle) & Ziel (Fahne)
+  // 2) Feine Sprenkel
+  for (let i = 0; i < 320; i++) {
+    const x = rng() * W, y = rng() * H;
+    g.fillStyle = rng() < 0.5 ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.08)';
+    g.fillRect(x, y, 2 + rng() * 3, 2 + rng() * 3);
+  }
+
+  // 3) Biom-Bodendetails
+  if (biomeKey === 'wiese' || biomeKey === 'wald' || biomeKey === 'see') {
+    // Grasbüschel
+    g.lineWidth = 2; g.lineCap = 'round';
+    for (let i = 0; i < 160; i++) {
+      const x = rng() * W, y = rng() * H;
+      if (!cellFree(x, y)) continue;
+      g.strokeStyle = rng() < 0.5 ? 'rgba(255,255,255,0.14)' : 'rgba(0,40,0,0.2)';
+      const s = 3 + rng() * 4;
+      g.beginPath();
+      g.moveTo(x - s, y + s); g.quadraticCurveTo(x - s, y - s, x - s * 1.4, y - s * 1.5);
+      g.moveTo(x, y + s); g.quadraticCurveTo(x, y - s * 1.2, x, y - s * 1.8);
+      g.moveTo(x + s, y + s); g.quadraticCurveTo(x + s, y - s, x + s * 1.4, y - s * 1.5);
+      g.stroke();
+    }
+  }
+  if (biomeKey === 'wiese') {
+    // Blumen-Teppiche
+    for (let i = 0; i < 9; i++) {
+      const cx = rng() * W, cy = rng() * H;
+      if (!cellFree(cx, cy)) continue;
+      const colors = ['#f8d030', '#ef7d57', '#f4f4f4', '#f85888'];
+      const col = colors[Math.floor(rng() * colors.length)];
+      for (let j = 0; j < 6; j++) {
+        const x = cx + (rng() - 0.5) * 60, y = cy + (rng() - 0.5) * 46;
+        if (!cellFree(x, y)) continue;
+        g.fillStyle = col;
+        for (let p = 0; p < 4; p++) {
+          const a = p * Math.PI / 2 + 0.6;
+          g.fillRect(x + Math.cos(a) * 3 - 1.5, y + Math.sin(a) * 3 - 1.5, 3, 3);
+        }
+        g.fillStyle = '#ffcd75';
+        g.fillRect(x - 1.5, y - 1.5, 3, 3);
+      }
+    }
+  }
+  if (biomeKey === 'wald') {
+    // gefallenes Laub
+    for (let i = 0; i < 60; i++) {
+      const x = rng() * W, y = rng() * H;
+      if (!cellFree(x, y)) continue;
+      g.save();
+      g.translate(x, y); g.rotate(rng() * Math.PI);
+      g.globalAlpha = 0.35;
+      g.fillStyle = rng() < 0.5 ? '#8a9a3a' : '#a8743a';
+      g.beginPath(); g.ellipse(0, 0, 5, 2.5, 0, 0, Math.PI * 2); g.fill();
+      g.restore();
+    }
+    g.globalAlpha = 1;
+  }
+  if (biomeKey === 'hoehle') {
+    // Risse im Fels
+    g.strokeStyle = 'rgba(0,0,0,0.3)'; g.lineWidth = 1.5;
+    for (let i = 0; i < 26; i++) {
+      let x = rng() * W, y = rng() * H;
+      g.beginPath(); g.moveTo(x, y);
+      for (let s = 0; s < 4; s++) {
+        x += (rng() - 0.5) * 44; y += (rng() - 0.5) * 30;
+        g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+  }
+  if (biomeKey === 'vulkan') {
+    // Glühende Lava-Adern
+    for (let i = 0; i < 14; i++) {
+      let x = rng() * W, y = rng() * H;
+      if (!cellFree(x, y)) continue;
+      const pts2 = [[x, y]];
+      for (let s = 0; s < 3; s++) {
+        x += (rng() - 0.5) * 70; y += (rng() - 0.5) * 40;
+        pts2.push([x, y]);
+      }
+      for (const [w, c, a] of [[7, '#ff6b35', 0.18], [3.5, '#ff8c42', 0.5], [1.5, '#ffd166', 0.9]]) {
+        g.strokeStyle = c; g.lineWidth = w; g.globalAlpha = a;
+        g.lineJoin = 'round'; g.lineCap = 'round';
+        g.beginPath(); g.moveTo(pts2[0][0], pts2[0][1]);
+        for (const [px, py] of pts2) g.lineTo(px, py);
+        g.stroke();
+      }
+      g.globalAlpha = 1;
+    }
+    // dunkle Brandflecken
+    for (let i = 0; i < 30; i++) {
+      g.globalAlpha = 0.15 + rng() * 0.15;
+      g.fillStyle = '#241412';
+      const x = rng() * W, y = rng() * H;
+      g.beginPath(); g.ellipse(x, y, 8 + rng() * 20, 5 + rng() * 12, rng() * Math.PI, 0, Math.PI * 2); g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+
+  // 4) Dezentes Bau-Raster
+  g.strokeStyle = 'rgba(0,0,0,0.05)';
+  g.lineWidth = 1;
+  g.beginPath();
+  for (let c = 1; c < COLS; c++) { g.moveTo(c * TILE, 0); g.lineTo(c * TILE, H); }
+  for (let r = 1; r < ROWS; r++) { g.moveTo(0, r * TILE); g.lineTo(W, r * TILE); }
+  g.stroke();
+
+  // 5) Pfad: Rand, Füllung, ausgetretene Mitte, Steinchen, Grashalme am Rand
+  const pts = session.path.pts;
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  const strokePath = (width, style, alpha = 1) => {
+    g.globalAlpha = alpha;
+    g.strokeStyle = style;
+    g.lineWidth = width;
+    g.beginPath();
+    g.moveTo(pts[0].x, pts[0].y);
+    for (const p of pts) g.lineTo(p.x, p.y);
+    g.stroke();
+    g.globalAlpha = 1;
+  };
+  strokePath(TILE * 0.86, 'rgba(0,0,0,0.25)');
+  strokePath(TILE * 0.8, biome.pathEdge);
+  strokePath(TILE * 0.62, biome.path);
+  strokePath(TILE * 0.26, '#ffffff', 0.09);
+
+  for (let d = 10; d < session.path.total; d += 22) {
+    const p = pointAt(session.path, d);
+    const ox = (rng() - 0.5) * 30, oy = (rng() - 0.5) * 30;
+    g.fillStyle = rng() < 0.6 ? 'rgba(0,0,0,0.12)' : 'rgba(255,255,255,0.12)';
+    g.beginPath();
+    g.arc(p.x + ox, p.y + oy, 1.5 + rng() * 2.5, 0, Math.PI * 2);
+    g.fill();
+  }
+  // Bewuchs am Pfadrand
+  if (biomeKey !== 'hoehle') {
+    g.lineWidth = 2; g.lineCap = 'round';
+    g.strokeStyle = biomeKey === 'vulkan' ? 'rgba(30,10,8,0.5)' : 'rgba(20,70,25,0.45)';
+    for (let d = 8; d < session.path.total; d += 14) {
+      const p = pointAt(session.path, d);
+      const side = rng() < 0.5 ? -1 : 1;
+      const nx = -p.dy * side, ny = p.dx * side; // Normale
+      const bx = p.x + nx * TILE * 0.42 + (rng() - 0.5) * 6;
+      const by = p.y + ny * TILE * 0.42 + (rng() - 0.5) * 6;
+      g.beginPath();
+      g.moveTo(bx, by);
+      g.lineTo(bx + (rng() - 0.5) * 5, by - 4 - rng() * 4);
+      g.stroke();
+    }
+  }
+
+  // 6) Höhle: Dunkelheit mit Lichtschein entlang des Pfads
+  if (biomeKey === 'hoehle') {
+    const dark = document.createElement('canvas');
+    dark.width = W; dark.height = H;
+    const dg = dark.getContext('2d');
+    dg.fillStyle = 'rgba(8, 6, 22, 0.55)';
+    dg.fillRect(0, 0, W, H);
+    dg.globalCompositeOperation = 'destination-out';
+    for (let d = 0; d <= session.path.total; d += 36) {
+      const p = pointAt(session.path, d);
+      const grad = dg.createRadialGradient(p.x, p.y, 10, p.x, p.y, 120);
+      grad.addColorStop(0, 'rgba(0,0,0,0.9)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      dg.fillStyle = grad;
+      dg.beginPath(); dg.arc(p.x, p.y, 120, 0, Math.PI * 2); dg.fill();
+    }
+    g.drawImage(dark, 0, 0);
+  }
+
+  // 7) Deko
+  for (const d of session.deco) drawDeco(g, d, rng);
+
+  // 8) Vignette (+ Glut-Schimmer im Vulkan)
+  const vig = g.createRadialGradient(W / 2, H / 2, H * 0.45, W / 2, H / 2, W * 0.62);
+  vig.addColorStop(0, 'rgba(0,0,0,0)');
+  vig.addColorStop(1, biomeKey === 'vulkan' ? 'rgba(40,5,0,0.4)' : 'rgba(0,0,10,0.32)');
+  g.fillStyle = vig;
+  g.fillRect(0, 0, W, H);
+
+  // 9) Spawn-Portal & Ziel-Fahne
   const s0 = pts[0], sE = pts[pts.length - 1];
+  g.fillStyle = 'rgba(0,0,0,0.35)';
+  g.beginPath(); g.ellipse(s0.x, s0.y, 30, 23, 0, 0, Math.PI * 2); g.fill();
   g.fillStyle = '#16161f';
   g.beginPath(); g.ellipse(s0.x, s0.y, 26, 20, 0, 0, Math.PI * 2); g.fill();
   g.fillStyle = '#2a2438';
   g.beginPath(); g.ellipse(s0.x, s0.y, 18, 13, 0, 0, Math.PI * 2); g.fill();
 
+  // Pokéball-Plattform am Ziel
+  g.fillStyle = 'rgba(0,0,0,0.25)';
+  g.beginPath(); g.ellipse(sE.x, sE.y + 4, 24, 12, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#f4f4f4';
+  g.beginPath(); g.ellipse(sE.x, sE.y, 22, 11, 0, 0, Math.PI * 2); g.fill();
+  g.fillStyle = '#ef4444';
+  g.beginPath(); g.ellipse(sE.x, sE.y, 22, 11, 0, Math.PI, Math.PI * 2); g.fill();
+  g.strokeStyle = '#16161f'; g.lineWidth = 2.5;
+  g.beginPath(); g.ellipse(sE.x, sE.y, 22, 11, 0, 0, Math.PI * 2); g.stroke();
+  g.beginPath(); g.moveTo(sE.x - 22, sE.y); g.lineTo(sE.x + 22, sE.y); g.stroke();
+  g.fillStyle = '#f4f4f4';
+  g.beginPath(); g.arc(sE.x, sE.y, 4.5, 0, Math.PI * 2); g.fill();
+  g.stroke();
+  // Fahne
   g.fillStyle = '#16161f';
-  g.fillRect(sE.x - 3, sE.y - 34, 6, 38);
+  g.fillRect(sE.x - 2.5, sE.y - 42, 5, 36);
   g.fillStyle = '#ef4444';
   g.beginPath();
-  g.moveTo(sE.x + 3, sE.y - 34);
-  g.lineTo(sE.x + 26, sE.y - 26);
-  g.lineTo(sE.x + 3, sE.y - 17);
+  g.moveTo(sE.x + 2.5, sE.y - 42);
+  g.lineTo(sE.x + 24, sE.y - 34);
+  g.lineTo(sE.x + 2.5, sE.y - 26);
   g.closePath(); g.fill();
-  g.fillStyle = '#fff';
-  g.beginPath(); g.arc(sE.x + 11, sE.y - 26, 3.5, 0, Math.PI * 2); g.fill();
 
-  // Deko
-  for (const d of session.deco) {
-    drawDeco(g, d, rng);
-  }
   return cv;
+}
+
+// Schwebende Biom-Partikel (Blätter, Glut, Sporen …) – zustandslos aus der Zeit
+export function drawAmbient(ctx, session, t) {
+  const biome = session.map.biome;
+  for (let i = 0; i < 16; i++) {
+    const h = (((i * 2654435761) >>> 0) % 1000) / 1000;
+    const h2 = (((i * 40503 + 977) >>> 0) % 1000) / 1000;
+    if (biome === 'vulkan') {
+      const speed = 26 + h * 44;
+      const y = H - ((t * speed + h2 * 700) % (H + 30));
+      const x = (h * W + Math.sin(t * 0.8 + i * 2.1) * 26 + W) % W;
+      ctx.globalAlpha = Math.max(0.12, 0.4 + 0.3 * Math.sin(t * 5 + i));
+      ctx.fillStyle = i % 3 ? '#ff9d4d' : '#ffd166';
+      ctx.fillRect(x, y, 3, 3);
+    } else if (biome === 'hoehle') {
+      const y = (h2 * H + Math.sin(t * 0.5 + i) * 18 + H) % H;
+      const x = (h * W + t * 7 + i * 13) % W;
+      ctx.globalAlpha = 0.22 + 0.18 * Math.sin(t * 2 + i * 1.7);
+      ctx.fillStyle = '#9fd8ff';
+      ctx.fillRect(x, y, 2, 2);
+    } else if (biome === 'see') {
+      const x = (h * W + i * 31) % W;
+      const y = (h2 * H + Math.sin(t + i) * 6 + H) % H;
+      ctx.globalAlpha = Math.max(0, Math.sin(t * 3 + i * 2.6)) * 0.45;
+      ctx.fillStyle = '#dff6ff';
+      ctx.fillRect(x, y, 2, 2);
+    } else {
+      const speed = 14 + h * 20;
+      const y = ((t * speed + h2 * 800) % (H + 40)) - 20;
+      const x = (h * W + Math.sin(t * 0.9 + i * 1.3) * 36 + W) % W;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(t * (1 + h) + i);
+      ctx.globalAlpha = 0.45;
+      ctx.fillStyle = biome === 'wald' ? (i % 2 ? '#7ec850' : '#c8a850') : (i % 2 ? '#f8c8d8' : '#f4f4c8');
+      ctx.beginPath(); ctx.ellipse(0, 0, 4, 2, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+  }
+  ctx.globalAlpha = 1;
 }
 
 function drawDeco(g, d, rng) {
@@ -155,23 +369,45 @@ function drawDeco(g, d, rng) {
       g.beginPath(); g.moveTo(0, -20); g.lineTo(10, 0); g.lineTo(0, 4); g.closePath(); g.fill();
       break;
     }
-    case 'wasser':
-      g.fillStyle = '#4a90d9';
+    case 'wasser': {
+      // Organischer Teich: überlappende Ellipsen + Ufer + Glanzwellen
+      g.fillStyle = 'rgba(40,60,30,0.35)';
       g.beginPath();
-      if (g.roundRect) g.roundRect(-26, -22, 52, 44, 14); else g.rect(-26, -22, 52, 44);
+      g.ellipse(0, 2, 30, 24, 0.2, 0, Math.PI * 2);
       g.fill();
-      g.strokeStyle = 'rgba(255,255,255,0.4)'; g.lineWidth = 2;
-      g.beginPath(); g.moveTo(-14, -6); g.quadraticCurveTo(-7, -11, 0, -6); g.quadraticCurveTo(7, -1, 14, -6); g.stroke();
-      g.beginPath(); g.moveTo(-14, 8); g.quadraticCurveTo(-7, 3, 0, 8); g.quadraticCurveTo(7, 13, 14, 8); g.stroke();
+      g.fillStyle = '#3d7ec9';
+      g.beginPath();
+      g.ellipse(0, 0, 26, 20, 0.2, 0, Math.PI * 2);
+      g.fill();
+      g.beginPath();
+      g.ellipse(9, -6, 18, 13, -0.3, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = '#5b9ade';
+      g.beginPath(); g.ellipse(-4, -2, 15, 10, 0.2, 0, Math.PI * 2); g.fill();
+      g.strokeStyle = 'rgba(255,255,255,0.5)'; g.lineWidth = 2; g.lineCap = 'round';
+      g.beginPath(); g.moveTo(-12, -4); g.quadraticCurveTo(-6, -8, 0, -4); g.stroke();
+      g.beginPath(); g.moveTo(-4, 7); g.quadraticCurveTo(2, 3, 8, 7); g.stroke();
       break;
-    case 'lava':
+    }
+    case 'lava': {
+      // Glühender Lavapool mit dunkler Kruste
+      g.fillStyle = 'rgba(255,107,53,0.25)';
+      g.beginPath(); g.ellipse(0, 1, 33, 26, 0, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#2b1210';
+      g.beginPath(); g.ellipse(0, 1, 28, 21, 0.15, 0, Math.PI * 2); g.fill();
       g.fillStyle = '#ff6b35';
-      g.beginPath();
-      if (g.roundRect) g.roundRect(-26, -22, 52, 44, 14); else g.rect(-26, -22, 52, 44);
-      g.fill();
-      g.fillStyle = '#ffcd75';
-      g.beginPath(); g.arc(-8, -4, 6, 0, Math.PI * 2); g.arc(10, 8, 4, 0, Math.PI * 2); g.arc(6, -10, 3, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.ellipse(0, 0, 23, 16, 0.15, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.ellipse(-9, 6, 14, 9, -0.2, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#ff9d4d';
+      g.beginPath(); g.ellipse(-2, -2, 13, 8, 0.15, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#ffd166';
+      g.beginPath(); g.arc(-6, -3, 4, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(7, 4, 3, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#2b1210';
+      g.beginPath(); g.arc(9, -6, 3.5, 0, Math.PI * 2); g.fill();
+      g.beginPath(); g.arc(-13, 3, 2.5, 0, Math.PI * 2); g.fill();
       break;
+    }
     case 'schilf':
       g.strokeStyle = '#3e9a58'; g.lineWidth = 3; g.lineCap = 'round';
       for (let i = -1; i <= 1; i++) {
@@ -222,6 +458,9 @@ export function drawFrame(ctx, session, ui) {
 
   ctx.imageSmoothingEnabled = false;
   ctx.drawImage(session.bg, 0, 0);
+
+  // Biom-Atmosphäre (Blätter, Glut, Sporen …)
+  drawAmbient(ctx, session, t);
 
   // Bauplatz-Hervorhebung im Platzierungsmodus
   if (ui.placing) {
@@ -296,7 +535,7 @@ export function drawFrame(ctx, session, ui) {
     const [c, r] = ui.ghostCell;
     const ok = session.canBuildAt(c, r) && session.gold >= ui.placing.cost;
     const x = c * TILE + TILE / 2, y = r * TILE + TILE / 2;
-    const range = ui.placing.stages[0].attack.range * (1 + session.run.mods.range);
+    const range = ui.placing.range * (1 + session.run.mods.range);
     ctx.globalAlpha = 0.15;
     ctx.fillStyle = ok ? '#38b764' : '#ef4444';
     ctx.beginPath(); ctx.arc(x, y, range, 0, Math.PI * 2); ctx.fill();
@@ -306,7 +545,7 @@ export function drawFrame(ctx, session, ui) {
     ctx.globalAlpha = 1;
     ctx.fillStyle = ok ? 'rgba(56,183,100,0.35)' : 'rgba(239,68,68,0.35)';
     ctx.fillRect(c * TILE, r * TILE, TILE, TILE);
-    drawSprite(ctx, ui.placing.stages[0].dex, x, y + 20, { time: t * 1000, alpha: 0.75 });
+    drawSprite(ctx, ui.placing.dex, x, y + 20, { time: t * 1000, alpha: 0.75 });
   }
 
   // Ausgewählter Tower: Reichweite

@@ -5,16 +5,16 @@
 import { COLS, ROWS } from '../config.js';
 
 export const BIOMES = {
-  wiese:  { ground: '#4e9a4e', ground2: '#459045', path: '#c2a35d', pathEdge: '#8a7440', deco: ['busch', 'blume', 'stein'], sky: '#87ceeb' },
-  wald:   { ground: '#2e6e3e', ground2: '#286337', path: '#8a6f47', pathEdge: '#5e4b2f', deco: ['baum', 'baum', 'busch', 'pilz'], sky: '#5fa377' },
-  see:    { ground: '#3d8a5a', ground2: '#368050', path: '#d9c47f', pathEdge: '#a08c53', deco: ['wasser', 'schilf', 'stein'], sky: '#6fc3df' },
-  hoehle: { ground: '#4a4458', ground2: '#413c4f', path: '#7a7086', pathEdge: '#57505f', deco: ['fels', 'fels', 'kristall'], sky: '#2a2438' },
-  vulkan: { ground: '#5e3a38', ground2: '#54312f', path: '#8c5b45', pathEdge: '#63402f', deco: ['fels', 'lava', 'lava'], sky: '#8c3a2b' },
+  wiese:  { ground: '#4e9a4e', ground2: '#3f8a41', groundLight: '#65b05c', path: '#c2a35d', pathEdge: '#8a7440', deco: ['busch', 'blume', 'stein'], sky: '#87ceeb' },
+  wald:   { ground: '#2e6e3e', ground2: '#255c34', groundLight: '#3f8a50', path: '#8a6f47', pathEdge: '#5e4b2f', deco: ['baum', 'baum', 'busch', 'pilz'], sky: '#5fa377' },
+  see:    { ground: '#3d8a5a', ground2: '#337a4e', groundLight: '#55a56e', path: '#d9c47f', pathEdge: '#a08c53', deco: ['wasser', 'schilf', 'stein'], sky: '#6fc3df' },
+  hoehle: { ground: '#4a4458', ground2: '#3d3849', groundLight: '#5c546e', path: '#7a7086', pathEdge: '#57505f', deco: ['fels', 'fels', 'kristall'], sky: '#2a2438' },
+  vulkan: { ground: '#5e3a38', ground2: '#4d2e2b', groundLight: '#754944', path: '#8c5b45', pathEdge: '#63402f', deco: ['fels', 'lava', 'lava'], sky: '#8c3a2b' },
 };
 
 export const MAPS = [
-  { name: 'Route 1',          biome: 'wiese',  path: [[0,4],[19,4]] },
-  { name: 'Alabastia-Hügel',  biome: 'wiese',  path: [[0,2],[10,2],[10,6],[19,6]] },
+  { name: 'Route 1',          biome: 'wiese',  path: [[0,3],[8,3],[8,6],[14,6],[14,3],[19,3]] },
+  { name: 'Alabastia-Hügel',  biome: 'wiese',  path: [[0,1],[15,1],[15,5],[4,5],[4,8]] },
   { name: 'Route 22',         biome: 'wiese',  path: [[0,1],[16,1],[16,4],[3,4],[3,7],[19,7]] },
   { name: 'Marmoria-Pfad',    biome: 'wiese',  path: [[0,6],[6,6],[6,2],[13,2],[13,6],[19,6]] },
   { name: 'Felstunnel-Tor',   biome: 'wiese',  path: [[9,0],[9,3],[3,3],[3,6],[16,6],[16,3],[19,3]], miniboss: 'onix' },
@@ -23,7 +23,7 @@ export const MAPS = [
   { name: 'Prismania-Park',   biome: 'wald',   path: [[10,8],[10,5],[3,5],[3,2],[16,2],[16,5],[19,5]], miniboss: 'arkani' },
   { name: 'Safari-Dickicht',  biome: 'wald',   path: [[0,3],[4,3],[4,6],[9,6],[9,2],[14,2],[14,6],[19,6]] },
   { name: 'Zorn-See',         biome: 'see',    path: [[0,4],[7,4],[7,2],[12,2],[12,6],[19,6]], boss: 'garados' },
-  { name: 'Mondberg',         biome: 'hoehle', path: [[19,2],[8,2],[8,6],[0,6]] },
+  { name: 'Mondberg',         biome: 'hoehle', path: [[19,1],[8,1],[8,4],[15,4],[15,7],[0,7]] },
   { name: 'Felstunnel',       biome: 'hoehle', path: [[0,1],[18,1],[18,5],[1,5],[1,8]], miniboss: 'onix' },
   { name: 'Siegesstraße',     biome: 'hoehle', path: [[9,0],[9,4],[2,4],[2,7],[16,7],[16,4],[19,4]] },
   { name: 'Kristallgrotte',   biome: 'hoehle', path: [[3,0],[3,5],[8,5],[8,1],[14,1],[14,6],[19,6]] },

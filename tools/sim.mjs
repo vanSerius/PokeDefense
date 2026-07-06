@@ -3,6 +3,7 @@
 globalThis.localStorage = { getItem: () => null, setItem: () => {}, removeItem: () => {} };
 
 const { Session } = await import('../js/game/session.js');
+const { serializeTower } = await import('../js/game/tower.js');
 const { newRun, applyItem, advanceRun } = await import('../js/game/state.js');
 const { LINES } = await import('../js/data/pokemon.js');
 const { ITEMS, rollDraft, stonesForTrainer } = await import('../js/data/items.js');
@@ -12,6 +13,8 @@ const { COLS, ROWS, TILE } = await import('../js/config.js');
 
 const trainerKey = process.argv[2] || 'rot';
 const seed = parseInt(process.argv[3] || '42', 10);
+// SLOPPY=1: simuliert einen unperfekten menschlichen Spieler
+const SLOPPY = process.env.SLOPPY === '1';
 
 function bestCells(session) {
   // Zellen nach Pfadnähe sortieren (wie viele Pfadzellen im Radius ~2)
@@ -33,6 +36,12 @@ function bestCells(session) {
 }
 
 function aiStep(session) {
+  // Team-Bank zuerst aufstellen (gratis)
+  while (session.bench.length) {
+    const spot = bestCells(session).find((cell) => session.canBuildAt(cell.c, cell.r));
+    if (!spot) break;
+    session.buildFromBench(0, spot.c, spot.r);
+  }
   // Entwickeln hat Priorität
   for (const t of session.towers) {
     const check = t.canEvolve(session);
@@ -68,8 +77,20 @@ function aiStep(session) {
     if (flyCapable < session.towers.length * 0.6 + 1) {
       choice = options.find(canHitFly) || choice;
     }
-    const spot = cells.find((cell) => session.canBuildAt(cell.c, cell.r));
+    // Schlampig: irgendeine der Top-12-Zellen statt der besten
+    const free = cells.filter((cell) => session.canBuildAt(cell.c, cell.r));
+    const spot = SLOPPY ? free.slice(0, 12)[Math.floor(Math.random() * Math.min(free.length, 12))] : free[0];
     if (spot) session.build(choice.key, spot.c, spot.r);
+  }
+  // Überschüssiges Gold in Training stecken (schwächsten Tower zuerst)
+  let guard = 20;
+  while (guard-- > 0) {
+    const candidates = session.towers
+      .filter((t) => t.maxStage || t.trainLvl < 3)
+      .sort((a, b) => a.trainLvl - b.trainLvl);
+    const t = candidates[0];
+    if (!t || session.gold < t.trainCost() + reserve + 250) break;
+    if (!t.train(session)) break;
   }
   // Welle starten
   if (session.state === 'build' || session.state === 'between') session.startWave();
@@ -86,8 +107,11 @@ while (result === 'running') {
   const session = new Session(run, {});
   const heartsBefore = run.hearts;
   let guard = 0;
+  let tick = 0;
   while (session.state !== 'won' && session.state !== 'lost') {
-    aiStep(session);
+    // Schlampiger Spieler reagiert nur alle ~3s statt alle 0.5s
+    if (!SLOPPY || tick % 6 === 0) aiStep(session);
+    tick++;
     for (let i = 0; i < 10; i++) session.update(0.05);
     if (++guard > 60000) { console.error('TIMEOUT auf Map', session.mapNo); result = 'timeout'; break; }
   }
@@ -102,12 +126,15 @@ while (result === 'running') {
   });
   if (result === 'timeout') break;
   if (session.state === 'lost') { result = 'lost'; break; }
+  run.team = [...session.towers.map(serializeTower), ...session.bench];
   const adv = advanceRun(run, session.gold);
   if (adv === 'victory') { result = 'victory'; break; }
   // Draft: Steine zuerst, dann X-Angriff/Flinkklaue, sonst erstes
   const picks = rollDraft(draftRngBase, run);
   const prio = ['donnerstein', 'mondstein', 'xangriff', 'flinkklaue', 'weitblick', 'gluecksei', 'sonderbonbon'];
-  const chosen = prio.find((p) => picks.includes(p)) || picks[0];
+  const chosen = SLOPPY
+    ? picks[Math.floor(Math.random() * picks.length)]
+    : (prio.find((p) => picks.includes(p)) || picks[0]);
   if (chosen) applyItem(run, chosen);
 }
 

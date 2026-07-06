@@ -4,17 +4,23 @@ import { TILE } from '../config.js';
 
 let nextId = 1;
 
+// Für die Team-Persistenz zwischen Maps
+export function serializeTower(t) {
+  return { lineKey: t.lineKey, stageIdx: t.stageIdx, kills: t.kills, spent: t.spent, trainLvl: t.trainLvl };
+}
+
 export class Tower {
-  constructor(lineKey, col, row) {
+  constructor(lineKey, col, row, saved = null) {
     this.id = nextId++;
     this.line = LINES[lineKey];
     this.lineKey = lineKey;
-    this.stageIdx = 0;
+    this.stageIdx = saved ? saved.stageIdx : 0;
     this.col = col; this.row = row;
     this.x = col * TILE + TILE / 2;
     this.y = row * TILE + TILE / 2;
-    this.kills = 0;
-    this.spent = this.line.cost;   // investiertes Gold (für Verkauf)
+    this.kills = saved ? saved.kills : 0;
+    this.spent = saved ? saved.spent : this.line.cost; // investiertes Gold (für Verkauf)
+    this.trainLvl = saved ? (saved.trainLvl || 0) : 0;  // Trainings-Level (+Schaden/Tempo)
     this.cooldown = 0;
     this.buff = 1;                 // Pantimos-Aura
     this.disabled = 0;             // Mewtwo-Psychokinese
@@ -35,11 +41,26 @@ export class Tower {
   }
 
   dmg(session) {
-    return this.attack.dmg * this.buff * (1 + session.run.mods.dmg);
+    return this.attack.dmg * this.buff * (1 + session.run.mods.dmg) * Math.pow(1.08, this.trainLvl);
   }
 
   rate(session) {
-    return this.attack.rate * (1 + session.run.mods.rate);
+    return this.attack.rate * (1 + session.run.mods.rate) * Math.pow(1.04, this.trainLvl);
+  }
+
+  // Training: unbegrenzter Gold-Sink, Kosten wachsen pro Level
+  trainCost() {
+    return Math.round(this.line.cost * 0.9 * Math.pow(1.3, this.trainLvl));
+  }
+
+  train(session) {
+    const cost = this.trainCost();
+    if (session.gold < cost) return false;
+    session.gold -= cost;
+    this.spent += cost;
+    this.trainLvl++;
+    this.evoFlash = 0.4;
+    return true;
   }
 
   // Nächste Evolutionsstufe + Anforderungen (oder null)

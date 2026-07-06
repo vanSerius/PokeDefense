@@ -88,11 +88,16 @@ export function showRunMap(run, actions) {
     return `<div class="${cls.join(' ')}"><span class="mn-num">${i + 1}</span><span class="mn-bio">${i < run.mapIndex ? '✔' : icon}</span></div>`;
   }).join('');
   const items = run.items.map((k) => `<span class="item-chip"><img src="${itemUrl(ITEMS[k].icon)}" alt="">${ITEMS[k].name}</span>`).join('');
+  const team = (run.team || []).map((u) => {
+    const st = LINES[u.lineKey].stages[u.stageIdx];
+    return `<span class="item-chip" title="${st.name}"><img src="${staticUrl(st.dex)}" alt="">S${u.stageIdx + 1}</span>`;
+  }).join('');
   const map = MAPS[run.mapIndex];
   const s = screen(`
     <h2 class="title" style="font-size:14px;color:${tr.color}">${tr.name}s Run</h2>
     <div class="stat-line">❤ <b>${run.hearts}/${START_HEARTS}</b> · Start-Gold: <b>◉${run.gold}</b>${run.candy ? ` · 🍬×${run.candy}` : ''}</div>
     <div class="run-map-grid">${nodes}</div>
+    ${team ? `<div class="stat-line" style="margin-bottom:0">Dein Team (reist mit!):</div><div class="item-strip">${team}</div>` : ''}
     ${items ? `<div class="item-strip">${items}</div>` : ''}
     <div class="subtitle" style="margin:8px 0 4px">Nächste Map: <b style="color:var(--accent)">${map.name}</b> ${map.boss ? '– BOSS-KAMPF!' : map.miniboss ? '– Miniboss wartet!' : ''}</div>
     <button class="menu-btn primary" id="r-start">Map ${run.mapIndex + 1} starten</button>

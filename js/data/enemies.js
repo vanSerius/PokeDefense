@@ -34,9 +34,9 @@ export const ENEMIES = {
   relaxo:  { dex: 143, name: 'Relaxo', types: ['normal'],           move: 'ground', hp: 900,  speed: 18, bounty: 100, scale: 1.5, miniboss: true },
 
   // ---- Bosse ----
-  garados: { dex: 130, name: 'Garados', types: ['wasser', 'flug'], move: 'float', hp: 3200, speed: 30, bounty: 400, scale: 1.9, boss: true,
-             ability: 'garados' }, // taucht periodisch ab, Wutanfall unter 30% HP
-  mewtwo:  { dex: 150, name: 'Mewtwo', types: ['psycho'], move: 'float', hp: 11000, speed: 26, bounty: 1000, scale: 1.8, boss: true,
+  garados: { dex: 130, name: 'Garados', types: ['wasser', 'flug'], move: 'float', hp: 720, speed: 30, bounty: 400, scale: 1.9, boss: true,
+             ability: 'garados' }, // taucht periodisch ab, Wutanfall unter 30% HP (HP skalieren via hpScale)
+  mewtwo:  { dex: 150, name: 'Mewtwo', types: ['psycho'], move: 'float', hp: 820, speed: 26, bounty: 1000, scale: 1.8, boss: true,
              ability: 'mewtwo' },  // Schildphasen, Klone, deaktiviert Tower
   mewtwoKlon: { dex: 150, name: 'Mewtwo-Klon', types: ['psycho'], move: 'float', hp: 350, speed: 55, bounty: 25, scale: 1.1, shiny: true },
 };

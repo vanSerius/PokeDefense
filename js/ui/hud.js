@@ -28,10 +28,26 @@ export class Hud {
     if (this.cache[key] !== text) { this.cache[key] = text; el.textContent = text; }
   }
 
-  // Bauleiste neu aufbauen (bei Map-Start)
+  // Bauleiste neu aufbauen (bei Map-Start & nach Bank-Änderungen)
   buildTowerbar(session) {
     this.el.towerbar.innerHTML = '';
     this.cardEls.clear();
+    this.benchEls = [];
+    // Team-Bank: mitgebrachte Pokémon, gratis platzierbar
+    session.bench.forEach((unit, idx) => {
+      const line = LINES[unit.lineKey];
+      const stage = line.stages[unit.stageIdx];
+      const card = document.createElement('div');
+      card.className = 'tower-card bench';
+      card.innerHTML = `
+        <span class="tc-badge">S${unit.stageIdx + 1}</span>
+        <img src="${staticUrl(stage.dex)}" alt="${stage.name}">
+        <div class="tc-cost" style="color:var(--accent2)">TEAM</div>
+        <div class="tc-name">${stage.name}</div>`;
+      card.addEventListener('click', () => this.ui.onBenchCardTap(idx));
+      this.el.towerbar.appendChild(card);
+      this.benchEls.push({ card, idx });
+    });
     for (const slot of session.roster()) {
       const line = LINES[slot.line];
       const card = document.createElement('div');
@@ -72,13 +88,17 @@ export class Hud {
     if (this.cache.waveCls !== waveCls) { this.cache.waveCls = waveCls; this.el.waveBtn.className = waveCls; }
 
     // Karten-Zustände
+    const p = this.ui.placing;
     for (const { card, slot, line } of this.cardEls.values()) {
       const unlocked = session.isUnlocked(slot);
       const affordable = session.gold >= line.cost;
       card.classList.toggle('locked', !unlocked);
       card.classList.toggle('expensive', unlocked && !affordable);
-      card.classList.toggle('selected', this.ui.placing === line);
+      card.classList.toggle('selected', !!p && p.line === line && p.benchIdx === null);
       card.querySelector('.tc-lock').textContent = unlocked ? '' : '🔒';
+    }
+    for (const { card, idx } of this.benchEls || []) {
+      card.classList.toggle('selected', !!p && p.benchIdx === idx);
     }
   }
 
@@ -107,16 +127,18 @@ export class Hud {
       chain: 'Kettenblitz', lob: 'Flächenschaden', boomerang: 'Bumerang', beam: 'Impuls', orb: 'Geschoss',
     }[atk.kind] || '';
 
+    const trainCost = tower.trainCost();
     p.innerHTML = `
       <img class="tp-sprite" src="${staticUrl(tower.stage.dex)}" alt="">
       <div class="tp-info">
-        <div class="tp-name">${tower.stage.name} <span style="color:var(--muted);font-size:7px">Stufe ${tower.stageIdx + 1}/${tower.line.stages.length} · ${tower.stage.types.map((t) => TYPE_NAMES[t]).join('/')}</span></div>
+        <div class="tp-name">${tower.stage.name}${tower.trainLvl ? ` <span style="color:var(--ok)">Lv.${tower.trainLvl}</span>` : ''} <span style="color:var(--muted);font-size:7px">Stufe ${tower.stageIdx + 1}/${tower.line.stages.length} · ${tower.stage.types.map((t) => TYPE_NAMES[t]).join('/')}</span></div>
         <div class="tp-stats">${kindInfo}${atk.dmg ? ` · DMG ${Math.round(tower.dmg(session))}` : ''} · Kills ${tower.kills}${req && req.kills ? `/${req.kills}` : ''}
         ${strong.length ? `<br>Stark: ${strong.slice(0, 4).join(', ')}` : ''}${weak.length ? ` · Schwach: ${weak.slice(0, 3).join(', ')}` : ''}
         ${req && req.stone ? `<br>Braucht: ${req.stone.charAt(0).toUpperCase() + req.stone.slice(1)}stein ${session.run.stones.includes(req.stone) ? '✔' : '✖ (Item-Draft)'}` : ''}</div>
       </div>
       <div class="tp-buttons">
         ${req ? `<button class="tp-btn evo" id="tp-evo" ${check.ok ? '' : 'disabled'}>${evoLabel}</button>` : ''}
+        <button class="tp-btn" id="tp-train" style="background:#7a5cb8">💪 ◉${trainCost}</button>
         <button class="tp-btn swap" id="tp-swap">⇄ Tausch</button>
         <button class="tp-btn sell" id="tp-sell">◉${Math.round(tower.spent * SELL_REFUND)} Verkauf</button>
         <button class="tp-btn" id="tp-close">✕</button>
@@ -125,6 +147,16 @@ export class Hud {
     p.querySelector('#tp-close').addEventListener('click', () => this.ui.deselectTower());
     p.querySelector('#tp-sell').addEventListener('click', () => this.ui.sellSelected());
     p.querySelector('#tp-swap').addEventListener('click', () => this.ui.startSwap());
+    p.querySelector('#tp-train').addEventListener('click', () => {
+      if (tower.train(session)) {
+        session.particles.burst(tower.x, tower.y, '#b89cf0', 12, 90, { glow: true });
+        sfx.evolve();
+        this.showTowerPanel(session, tower);
+      } else {
+        this.ui.toast(`Training kostet ◉${tower.trainCost()} (+8% Schaden, +4% Tempo)`);
+        sfx.error();
+      }
+    });
     const evoBtn = p.querySelector('#tp-evo');
     if (evoBtn) {
       evoBtn.addEventListener('click', () => {

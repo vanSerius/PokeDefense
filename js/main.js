@@ -8,6 +8,8 @@ import { getMeta, loadRun, saveRun, clearRun } from './core/save.js';
 import { makeRng } from './core/rng.js';
 import { newRun, applyItem, advanceRun, endRun } from './game/state.js';
 import { Session } from './game/session.js';
+import { serializeTower } from './game/tower.js';
+import { LINES } from './data/pokemon.js';
 import { renderMapBackground, drawFrame } from './render/renderer.js';
 import { Hud } from './ui/hud.js';
 import * as screens from './ui/screens.js';
@@ -24,7 +26,7 @@ let lastT = 0;
 
 // Geteilter UI-Zustand (auch vom Renderer gelesen)
 const ui = {
-  placing: null,        // Linie, die gerade platziert wird
+  placing: null,        // { line, benchIdx|null, dex, range, cost }
   ghostCell: null,
   selectedTower: null,
   swapMode: false,
@@ -39,15 +41,31 @@ const ui = {
       return;
     }
     this.deselectTower();
-    if (this.placing === line) { this.placing = null; return; }
+    if (this.placing && this.placing.line === line && this.placing.benchIdx === null) { this.placing = null; return; }
     if (session.gold < line.cost) {
       screens.toast(`Zu teuer! ${line.stages[0].name} kostet ◉${line.cost}`);
       sfx.error();
       return;
     }
-    this.placing = line;
+    const st = line.stages[0];
+    this.placing = { line, benchIdx: null, dex: st.dex, range: st.attack.range, cost: line.cost };
     this.ghostCell = null;
-    screens.toast(`${line.stages[0].name}: ${line.desc}`);
+    screens.toast(`${st.name}: ${line.desc}`);
+    sfx.click();
+  },
+
+  onBenchCardTap(idx) {
+    unlockAudio();
+    if (!session) return;
+    this.deselectTower();
+    if (this.placing && this.placing.benchIdx === idx) { this.placing = null; return; }
+    const unit = session.bench[idx];
+    if (!unit) return;
+    const line = LINES[unit.lineKey];
+    const st = line.stages[unit.stageIdx];
+    this.placing = { line, benchIdx: idx, dex: st.dex, range: st.attack.range, cost: 0 };
+    this.ghostCell = null;
+    screens.toast(`${st.name} aus deinem Team – gratis platzieren!`);
     sfx.click();
   },
 
@@ -120,10 +138,13 @@ canvas.addEventListener('pointerdown', (ev) => {
 
   if (ui.placing) {
     ui.ghostCell = [c, r];
-    const t = session.build(ui.placing.key, c, r);
+    const t = ui.placing.benchIdx !== null
+      ? session.buildFromBench(ui.placing.benchIdx, c, r)
+      : session.build(ui.placing.line.key, c, r);
     if (t) {
       ui.placing = null;
       ui.ghostCell = null;
+      hud.buildTowerbar(session); // Bank hat sich evtl. geändert
     } else if (!session.canBuildAt(c, r)) {
       ui.placing = null;
       ui.ghostCell = null;
@@ -219,6 +240,8 @@ function startMap() {
 function onMapEnd(result) {
   if (!session) return;
   if (result === 'won') {
+    // Team einsammeln: aufgestellte + nicht aufgestellte Pokémon wandern mit
+    run.team = [...session.towers.map(serializeTower), ...session.bench];
     const goldLeft = session.gold;
     const status = advanceRun(run, goldLeft);
     if (status === 'victory') {

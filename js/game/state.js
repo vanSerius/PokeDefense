@@ -11,6 +11,7 @@ export function newRun(trainerKey) {
     gold: BASE_GOLD,
     stones: [],
     candy: 0,
+    team: [],           // persistente Pokémon: {lineKey, stageIdx, kills, spent}
     items: [],          // gewählte Item-Keys (für die Anzeige)
     mods: { dmg: 0, range: 0, rate: 0, bounty: 0, waveGold: 0, killXp: 0, friendship: 0 },
     maxEvoStage: 1,
@@ -32,10 +33,10 @@ export function applyItem(run, itemKey) {
 }
 
 // Nach gewonnener Map: Gold teilweise mitnehmen, weiter zur nächsten.
-// Das Startgold wächst mit, weil die Tower jede Map neu gebaut werden.
+// Das Team bleibt bestehen – Startgold wächst nur leicht (für Neuzugänge & Evos).
 export function advanceRun(run, sessionGold) {
   run.mapIndex++;
-  run.gold = Math.round(BASE_GOLD * (1 + 0.15 * run.mapIndex) + sessionGold * GOLD_CARRY);
+  run.gold = Math.round(BASE_GOLD * (1 + 0.06 * run.mapIndex) + sessionGold * GOLD_CARRY);
   const meta = getMeta();
   const reached = Math.min(run.mapIndex + 1, MAP_COUNT);
   if (reached > (meta.bestMap[run.trainer] || 0)) { meta.bestMap[run.trainer] = reached; saveMeta(); }
