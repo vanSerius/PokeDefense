@@ -12,6 +12,8 @@ export const GOLD_CARRY = 0.5;   // Anteil Restgold, der mitgenommen wird
 export const WAVE_BONUS = 42;    // Gold pro geschaffter Welle
 export const SELL_REFUND = 0.7;  // Anteil beim Verkaufen
 
-export const MAP_COUNT = 20;
+export const MAP_COUNT = 12;
 export const SPEEDS = [1, 2, 3];
 export const TEAM_CAP = 12;      // max. Pokémon im Team (Feld + Bank)
+export const BETWEEN_TIME = 10;  // Sekunden bis zur Auto-Welle
+export const EARLY_CALL_RATE = 6; // Bonus-Gold pro gesparter Sekunde beim Früher-Rufen

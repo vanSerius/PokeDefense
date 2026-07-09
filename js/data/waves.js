@@ -7,11 +7,11 @@ import { makeRng, pick, shuffle } from '../core/rng.js';
 // Welche Gegner ab welcher Map auftauchen
 const POOLS = [
   { from: 1,  keys: ['raupy', 'karpador', 'rattfratz', 'taubsi'] },
-  { from: 3,  keys: ['habitak', 'knofensa', 'paras'] },
-  { from: 5,  keys: ['sandan', 'zubat', 'enton', 'krabby'] },
-  { from: 8,  keys: ['menki', 'digda', 'magnetilo', 'tentacha'] },
-  { from: 10, keys: ['fukano', 'kleinstein', 'rattikarl', 'tauboga'] },
-  { from: 13, keys: ['machollo', 'ponita', 'muschas'] },
+  { from: 2,  keys: ['habitak', 'knofensa', 'paras'] },
+  { from: 4,  keys: ['sandan', 'zubat', 'enton', 'krabby'] },
+  { from: 6,  keys: ['menki', 'digda', 'magnetilo', 'tentacha'] },
+  { from: 8,  keys: ['fukano', 'kleinstein', 'rattikarl', 'tauboga'] },
+  { from: 10, keys: ['machollo', 'ponita', 'muschas'] },
 ];
 
 function poolFor(mapNo) {
@@ -23,20 +23,20 @@ function poolFor(mapNo) {
 const ARCHETYPES = ['mixed', 'swarm', 'fast', 'tank', 'fly'];
 
 function wavesCount(mapNo) {
-  return 6 + Math.floor((mapNo - 1) / 5); // 6 → 9 Wellen
+  return 6 + Math.floor((mapNo - 1) / 4); // 6 → 8 Wellen
 }
 
 // HP-Skalierung über den Run
 export function hpScale(mapNo, waveNo) {
-  return Math.pow(1.23, mapNo - 1) * (1 + 0.12 * (waveNo - 1));
+  return Math.pow(1.36, mapNo - 1) * (1 + 0.14 * (waveNo - 1));
 }
 // Gegner werden auf späteren Maps auch schneller
 export function speedScale(mapNo) {
-  return 1 + 0.018 * (mapNo - 1);
+  return 1 + 0.03 * (mapNo - 1);
 }
 // Kopfgeld wächst mit, damit man auf späteren Maps genug für Evos hat
 export function bountyScale(mapNo) {
-  return 1 + (mapNo - 1) * 0.15;
+  return 1 + (mapNo - 1) * 0.25;
 }
 
 export function generateWaves(mapNo, seed) {
@@ -58,24 +58,24 @@ export function generateWaves(mapNo, seed) {
     if (arch === 'swarm') {
       const weak = pool.filter((k) => ENEMIES[k].hp <= 40);
       const key = pick(rng, weak.length ? weak : pool);
-      groups.push({ enemy: key, count: Math.round(budget * 1.8), gap: 0.45, hpMult: hpM * 0.6, speedMult: speedScale(mapNo) });
+      groups.push({ enemy: key, count: Math.round(budget * 1.8), gap: 0.4, hpMult: hpM * 0.6, speedMult: speedScale(mapNo) });
     } else if (arch === 'fast') {
       const fast = pool.filter((k) => ENEMIES[k].speed >= 70);
       const key = pick(rng, fast.length ? fast : pool);
-      groups.push({ enemy: key, count: budget, gap: 0.7, hpMult: hpM * 0.85, speedMult: Math.min(1.5, 1.25 * speedScale(mapNo)) });
+      groups.push({ enemy: key, count: budget, gap: 0.6, hpMult: hpM * 0.85, speedMult: Math.min(1.5, 1.25 * speedScale(mapNo)) });
     } else if (arch === 'tank') {
       const tanks = pool.filter((k) => ENEMIES[k].hp >= 60);
       const key = pick(rng, tanks.length ? tanks : pool);
-      groups.push({ enemy: key, count: Math.max(3, Math.round(budget * 0.55)), gap: 1.5, hpMult: hpM * 1.7, speedMult: 0.85 * speedScale(mapNo) });
+      groups.push({ enemy: key, count: Math.max(3, Math.round(budget * 0.55)), gap: 1.3, hpMult: hpM * 1.7, speedMult: 0.85 * speedScale(mapNo) });
     } else if (arch === 'fly') {
       const fly = pool.filter((k) => ENEMIES[k].move === 'fly');
       const key = fly.length ? pick(rng, fly) : pick(rng, pool);
-      groups.push({ enemy: key, count: budget, gap: 0.8, hpMult: hpM, speedMult: Math.min(1.45, 1.1 * speedScale(mapNo)) });
+      groups.push({ enemy: key, count: budget, gap: 0.7, hpMult: hpM, speedMult: Math.min(1.45, 1.1 * speedScale(mapNo)) });
     } else {
       // mixed: 2–3 Gruppen verschiedener Gegner
       const kinds = shuffle(rng, pool).slice(0, 2 + (rng() < 0.5 ? 1 : 0));
       for (const key of kinds) {
-        groups.push({ enemy: key, count: Math.max(2, Math.round(budget / kinds.length)), gap: 0.9, hpMult: hpM, speedMult: speedScale(mapNo) });
+        groups.push({ enemy: key, count: Math.max(2, Math.round(budget / kinds.length)), gap: 0.75, hpMult: hpM, speedMult: speedScale(mapNo) });
       }
     }
 

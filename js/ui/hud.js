@@ -3,7 +3,7 @@ import { LINES } from '../data/pokemon.js';
 import { TYPE_NAMES, typeMatchups } from '../data/types.js';
 import { staticUrl } from '../core/loader.js';
 import { sfx } from '../core/audio.js';
-import { SELL_REFUND, SPEEDS } from '../config.js';
+import { SELL_REFUND, SPEEDS, MAP_COUNT } from '../config.js';
 
 export class Hud {
   constructor(ui) {
@@ -55,7 +55,7 @@ export class Hud {
       card.innerHTML = `
         <span class="tc-lock"></span><span class="tc-badge"></span>
         <img src="${staticUrl(line.stages[0].dex)}" alt="${line.stages[0].name}">
-        <div class="tc-cost">◉${line.cost}</div>
+        <div class="tc-cost"><i class="ico ico-coin sm"></i>${line.cost}</div>
         <div class="tc-name">${line.stages[0].name}</div>`;
       card.addEventListener('click', () => this.ui.onTowerCardTap(slot, line));
       this.el.towerbar.appendChild(card);
@@ -65,24 +65,24 @@ export class Hud {
 
   update(session) {
     if (!session) return;
-    this.set('hearts', this.el.hearts, `❤ ${session.run.hearts}`);
-    this.set('gold', this.el.gold, `◉ ${Math.floor(session.gold)}`);
-    this.set('map', this.el.map, `${session.map.name} (${session.mapNo}/20)`);
+    this.set('hearts', this.el.hearts.lastElementChild, String(session.run.hearts));
+    this.set('gold', this.el.gold.lastElementChild, String(Math.floor(session.gold)));
+    this.set('map', this.el.map, `${session.map.name} (${session.mapNo}/${MAP_COUNT})`);
     // Vorschau: Typ der nächsten Welle anzeigen, solange sie nicht läuft
     let waveLabel = `Welle ${Math.min(session.waveIdx + 1, session.waveCount)}/${session.waveCount}`;
     if (session.state === 'build' || session.state === 'between') {
       const next = session.waves[session.waveIdx + 1];
       if (next) {
-        const names = { mixed: 'Gemischt', swarm: '🐛 Schwarm!', fast: '💨 Schnell!', tank: '🛡 Panzer!', fly: '🕊 Flieger!', boss: '💀 BOSS!' };
+        const names = { mixed: 'Gemischt', swarm: 'SCHWARM!', fast: 'SCHNELL!', tank: 'PANZER!', fly: 'FLIEGER!', boss: 'BOSS!!!' };
         waveLabel = `Welle ${session.waveIdx + 2}/${session.waveCount}: ${names[next.archetype] || ''}`;
       }
     }
     this.set('wave', this.el.wave, waveLabel);
 
-    // Wellen-Button
+    // Wellen-Button (früher rufen gibt Bonus-Gold!)
     let waveText, waveCls = 'tb-btn';
-    if (session.state === 'build') { waveText = '▶ Start'; waveCls += ' attention'; }
-    else if (session.state === 'between') { waveText = `▶ ${Math.ceil(session.betweenT)}s`; waveCls += ' primary'; }
+    if (session.state === 'build') { waveText = 'Start!'; waveCls += ' attention'; }
+    else if (session.state === 'between') { waveText = `Rufen +${session.earlyCallBonus()}`; waveCls += ' primary'; }
     else waveText = '···';
     this.set('waveBtn', this.el.waveBtn, waveText);
     if (this.cache.waveCls !== waveCls) { this.cache.waveCls = waveCls; this.el.waveBtn.className = waveCls; }
@@ -95,16 +95,20 @@ export class Hud {
       card.classList.toggle('locked', !unlocked);
       card.classList.toggle('expensive', unlocked && !affordable);
       card.classList.toggle('selected', !!p && p.line === line && p.benchIdx === null);
-      card.querySelector('.tc-lock').textContent = unlocked ? '' : '🔒';
+      const lockEl = card.querySelector('.tc-lock');
+      const lockHtml = unlocked ? '' : '<i class="ico ico-lock sm" style="margin:0"></i>';
+      if (lockEl.innerHTML !== lockHtml) lockEl.innerHTML = lockHtml;
     }
     for (const { card, idx } of this.benchEls || []) {
       card.classList.toggle('selected', !!p && p.benchIdx === idx);
     }
   }
 
-  updateSpeedBtn(speedIdx) { this.el.speedBtn.textContent = SPEEDS[speedIdx] + '×'; }
-  updatePauseBtn(paused) { this.el.pauseBtn.textContent = paused ? '▶' : '⏸'; }
-  updateMuteBtn(muted) { this.el.muteBtn.textContent = muted ? '🔇' : '🔊'; }
+  updateSpeedBtn(speedIdx) { this.el.speedBtn.textContent = SPEEDS[speedIdx] + '\u00d7'; }
+  updatePauseBtn(paused) { this.el.pauseBtn.textContent = paused ? '>' : 'II'; }
+  updateMuteBtn(muted) {
+    this.el.muteBtn.innerHTML = `<i class="ico ico-sound-${muted ? 'off' : 'on'}" style="margin:0"></i>`;
+  }
 
   // ---------- Tower-Panel ----------
   showTowerPanel(session, tower) {
@@ -118,9 +122,9 @@ export class Hud {
 
     let evoLabel = '';
     if (req) {
-      if (req.trade) evoLabel = '⇄ Tausch-Evo!';
-      else if (check.candy) evoLabel = '🍬 Gratis-Evo!';
-      else evoLabel = `▲ Evo ◉${req.gold}`;
+      if (req.trade) evoLabel = 'Tausch-Evo!';
+      else if (check.candy) evoLabel = 'Gratis-Evo!';
+      else evoLabel = `Evo <i class="ico ico-coin sm"></i>${req.gold}`;
     }
     const kindInfo = {
       support: 'Bufft Tower in Reichweite', aura: 'Frost-Aura', mine: 'Legt Minen',
@@ -138,10 +142,10 @@ export class Hud {
       </div>
       <div class="tp-buttons">
         ${req ? `<button class="tp-btn evo" id="tp-evo" ${check.ok ? '' : 'disabled'}>${evoLabel}</button>` : ''}
-        <button class="tp-btn" id="tp-train" style="background:#7a5cb8">💪 ◉${trainCost}</button>
-        <button class="tp-btn swap" id="tp-swap">⇄ Tausch</button>
-        <button class="tp-btn sell" id="tp-sell">◉${Math.round(tower.spent * SELL_REFUND)} Verkauf</button>
-        <button class="tp-btn" id="tp-close">✕</button>
+        <button class="tp-btn" id="tp-train" style="background:#7a5cb8">Training <i class="ico ico-coin sm"></i>${trainCost}</button>
+        <button class="tp-btn swap" id="tp-swap">Tausch</button>
+        <button class="tp-btn sell" id="tp-sell">Verkauf <i class="ico ico-coin sm"></i>${Math.round(tower.spent * SELL_REFUND)}</button>
+        <button class="tp-btn" id="tp-close">X</button>
       </div>`;
 
     p.querySelector('#tp-close').addEventListener('click', () => this.ui.deselectTower());
@@ -153,7 +157,7 @@ export class Hud {
         sfx.evolve();
         this.showTowerPanel(session, tower);
       } else {
-        this.ui.toast(`Training kostet ◉${tower.trainCost()} (+8% Schaden, +4% Tempo)`);
+        this.ui.toast(`Training kostet ${tower.trainCost()} Gold (+8% Schaden, +4% Tempo)`);
         sfx.error();
       }
     });

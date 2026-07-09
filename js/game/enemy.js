@@ -14,7 +14,7 @@ export class Enemy {
     this.move = def.move;
     this.maxHp = Math.round(def.hp * (opts.hpMult || 1));
     this.hp = this.maxHp;
-    this.baseSpeed = def.speed * (opts.speedMult || 1);
+    this.baseSpeed = def.speed * 1.2 * (opts.speedMult || 1);
     this.bounty = Math.max(1, Math.round(def.bounty * (opts.bountyMult || 1)));
     this.dist = opts.dist || 0;
     this.dead = false;

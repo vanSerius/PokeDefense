@@ -36,7 +36,7 @@ export function applyItem(run, itemKey) {
 // Das Team bleibt bestehen – Startgold wächst nur leicht (für Neuzugänge & Evos).
 export function advanceRun(run, sessionGold) {
   run.mapIndex++;
-  run.gold = Math.round(BASE_GOLD * (1 + 0.06 * run.mapIndex) + sessionGold * GOLD_CARRY);
+  run.gold = Math.round(BASE_GOLD * (1 + 0.1 * run.mapIndex) + sessionGold * GOLD_CARRY);
   const meta = getMeta();
   const reached = Math.min(run.mapIndex + 1, MAP_COUNT);
   if (reached > (meta.bestMap[run.trainer] || 0)) { meta.bestMap[run.trainer] = reached; saveMeta(); }

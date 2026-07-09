@@ -68,10 +68,10 @@ for (let m = 1; m <= MAP_COUNT; m++) {
     }
   }
 }
-const boss10 = generateWaves(10, 1).some((w) => w.groups.some((g) => g.boss));
-const boss20 = generateWaves(20, 1).some((w) => w.groups.some((g) => g.boss));
-if (!boss10) err('Map 10 hat keine Boss-Welle');
-if (!boss20) err('Map 20 hat keine Boss-Welle');
+const bossMid = generateWaves(6, 1).some((w) => w.groups.some((g) => g.boss));
+const bossEnd = generateWaves(MAP_COUNT, 1).some((w) => w.groups.some((g) => g.boss));
+if (!bossMid) err('Map 6 hat keine Boss-Welle');
+if (!bossEnd) err(`Map ${MAP_COUNT} hat keine Boss-Welle`);
 
 console.log(errors ? `${errors} Fehler gefunden.` : 'Alles OK ✔');
 process.exit(errors ? 1 : 0);

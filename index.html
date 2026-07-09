@@ -20,22 +20,23 @@
 <div id="app" class="hidden">
   <div id="topbar">
     <div class="tb-group">
-      <span class="tb-item" id="tb-hearts">❤ 20</span>
-      <span class="tb-item" id="tb-gold">◉ 0</span>
+      <span class="tb-item" id="tb-hearts"><i class="ico ico-heart"></i><span>20</span></span>
+      <span class="tb-item" id="tb-gold"><i class="ico ico-coin"></i><span>0</span></span>
     </div>
     <div class="tb-group">
-      <span class="tb-item" id="tb-map">Map 1/20</span>
-      <span class="tb-item" id="tb-wave">Welle 0/5</span>
+      <span class="tb-item" id="tb-map">Map 1/12</span>
+      <span class="tb-item" id="tb-wave">Welle 0/6</span>
     </div>
     <div class="tb-group">
-      <button class="tb-btn" id="btn-wave">▶ Welle</button>
-      <button class="tb-btn" id="btn-speed">1×</button>
-      <button class="tb-btn" id="btn-pause">⏸</button>
-      <button class="tb-btn" id="btn-mute">🔊</button>
+      <button class="tb-btn" id="btn-wave">Start</button>
+      <button class="tb-btn" id="btn-speed">1&times;</button>
+      <button class="tb-btn" id="btn-pause">II</button>
+      <button class="tb-btn" id="btn-mute"><i class="ico ico-sound-on" style="margin:0"></i></button>
     </div>
   </div>
   <div id="stage">
     <canvas id="game"></canvas>
+    <button id="skillbtn" class="hidden"><span class="sk-icon"></span><span class="sk-name"></span></button>
   </div>
   <div id="buildbar">
     <div id="towerbar"></div>

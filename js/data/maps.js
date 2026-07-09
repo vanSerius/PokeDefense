@@ -12,26 +12,19 @@ export const BIOMES = {
   vulkan: { ground: '#5e3a38', ground2: '#4d2e2b', groundLight: '#754944', path: '#8c5b45', pathEdge: '#63402f', deco: ['fels', 'lava', 'lava'], sky: '#8c3a2b' },
 };
 
+// 12 kuratierte Maps: Minibosse auf 3, 9 & 11 · Bosse auf 6 (Garados) & 12 (Mewtwo)
 export const MAPS = [
   { name: 'Route 1',          biome: 'wiese',  path: [[0,3],[8,3],[8,6],[14,6],[14,3],[19,3]] },
   { name: 'Alabastia-Hügel',  biome: 'wiese',  path: [[0,1],[15,1],[15,5],[4,5],[4,8]] },
-  { name: 'Route 22',         biome: 'wiese',  path: [[0,1],[16,1],[16,4],[3,4],[3,7],[19,7]] },
-  { name: 'Marmoria-Pfad',    biome: 'wiese',  path: [[0,6],[6,6],[6,2],[13,2],[13,6],[19,6]] },
   { name: 'Felstunnel-Tor',   biome: 'wiese',  path: [[9,0],[9,3],[3,3],[3,6],[16,6],[16,3],[19,3]], miniboss: 'onix' },
   { name: 'Vertania-Wald',    biome: 'wald',   path: [[0,4],[5,4],[5,1],[11,1],[11,7],[16,7],[16,4],[19,4]] },
   { name: 'Flegmon-Brücke',   biome: 'wald',   path: [[0,7],[15,7],[15,1],[2,1],[2,4],[19,4]] },
-  { name: 'Prismania-Park',   biome: 'wald',   path: [[10,8],[10,5],[3,5],[3,2],[16,2],[16,5],[19,5]], miniboss: 'arkani' },
-  { name: 'Safari-Dickicht',  biome: 'wald',   path: [[0,3],[4,3],[4,6],[9,6],[9,2],[14,2],[14,6],[19,6]] },
   { name: 'Zorn-See',         biome: 'see',    path: [[0,4],[7,4],[7,2],[12,2],[12,6],[19,6]], boss: 'garados' },
   { name: 'Mondberg',         biome: 'hoehle', path: [[19,1],[8,1],[8,4],[15,4],[15,7],[0,7]] },
-  { name: 'Felstunnel',       biome: 'hoehle', path: [[0,1],[18,1],[18,5],[1,5],[1,8]], miniboss: 'onix' },
   { name: 'Siegesstraße',     biome: 'hoehle', path: [[9,0],[9,4],[2,4],[2,7],[16,7],[16,4],[19,4]] },
-  { name: 'Kristallgrotte',   biome: 'hoehle', path: [[3,0],[3,5],[8,5],[8,1],[14,1],[14,6],[19,6]] },
   { name: 'Seeschaum-Insel',  biome: 'hoehle', path: [[0,2],[17,2],[17,7],[0,7]], miniboss: 'lapras' },
   { name: 'Zinnoberpfad',     biome: 'vulkan', path: [[19,4],[13,4],[13,1],[6,1],[6,7],[0,7]] },
-  { name: 'Glutkammer',       biome: 'vulkan', path: [[0,1],[9,1],[9,7],[3,7],[3,4],[14,4],[14,1],[19,1]] },
-  { name: 'Aschegrat',        biome: 'vulkan', path: [[5,0],[5,6],[10,6],[10,2],[15,2],[15,8]], miniboss: 'relaxo' },
-  { name: 'Magmastrom',       biome: 'vulkan', path: [[0,6],[4,6],[4,2],[9,2],[9,6],[14,6],[14,2],[19,2]] },
+  { name: 'Glutkammer',       biome: 'vulkan', path: [[0,1],[9,1],[9,7],[3,7],[3,4],[14,4],[14,1],[19,1]], miniboss: 'arkani' },
   { name: 'Unbekannte Höhle', biome: 'vulkan', path: [[0,4],[16,4],[16,1],[3,1],[3,7],[19,7]], boss: 'mewtwo' },
 ];
 

@@ -35,7 +35,7 @@ export function showMenu(actions) {
         <h1 class="title">PokeDefense</h1>
         <img src="${staticUrl(6)}" style="width:56px;height:56px;image-rendering:pixelated;transform:scaleX(-1)" alt="">
       </div>
-      <div class="subtitle">Roguelike Tower Defense · 20 Maps · 4 Trainer</div>
+      <div class="subtitle">Roguelike Tower Defense · 12 Maps · 4 Trainer</div>
       ${hasRun ? '<button class="menu-btn primary" id="m-continue">Run fortsetzen</button>' : ''}
       <button class="menu-btn ${hasRun ? '' : 'primary'}" id="m-new">Neuer Run</button>
       <button class="menu-btn" id="m-dex">Pokédex</button>
@@ -95,7 +95,7 @@ export function showRunMap(run, actions) {
   const map = MAPS[run.mapIndex];
   const s = screen(`
     <h2 class="title" style="font-size:14px;color:${tr.color}">${tr.name}s Run</h2>
-    <div class="stat-line">❤ <b>${run.hearts}/${START_HEARTS}</b> · Start-Gold: <b>◉${run.gold}</b>${run.candy ? ` · 🍬×${run.candy}` : ''}</div>
+    <div class="stat-line">❤ <b>${run.hearts}/${START_HEARTS}</b> · Start-Gold: <b><i class="ico ico-coin sm"></i>${run.gold}</b>${run.candy ? ` · Bonbons: <b>${run.candy}</b>` : ''}</div>
     <div class="run-map-grid">${nodes}</div>
     ${team ? `<div class="stat-line" style="margin-bottom:0">Dein Team (reist mit!):</div><div class="item-strip">${team}</div>` : ''}
     ${items ? `<div class="item-strip">${items}</div>` : ''}
@@ -138,7 +138,7 @@ export function showEnd(won, run, stats, actions) {
     <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;width:100%">
       <h1 class="title" style="color:${won ? 'var(--ok)' : 'var(--danger)'}">${won ? '🏆 CHAMP!' : 'GAME OVER'}</h1>
       <div class="subtitle">${won
-        ? 'Du hast alle 20 Maps überlebt und Mewtwo besiegt!'
+        ? 'Du hast alle 12 Maps überlebt und Mewtwo besiegt!'
         : `Dein Team wurde auf Map ${run.mapIndex + 1} (${MAPS[run.mapIndex].name}) überrannt…`}</div>
       ${firstWin ? `<div class="stat-line" style="color:#a855f7;font-size:11px">🔓 GEHEIMER TRAINER FREIGESCHALTET: GIOVANNI!</div>` : ''}
       <div class="stat-line">Trainer: <b>${TRAINERS[run.trainer].name}</b> · Maps geschafft: <b>${won ? MAP_COUNT : run.mapIndex}</b> · Items: <b>${run.items.length}</b></div>

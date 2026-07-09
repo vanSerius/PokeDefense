@@ -36,6 +36,11 @@ function bestCells(session) {
 }
 
 function aiStep(session) {
+  // Trainer-Skill nutzen, sobald bereit und genug Gegner da sind
+  if (session.skill && session.skillCd <= 0 && session.enemies.length >= 4) {
+    const front = session.enemies.reduce((a, b) => (a.dist > b.dist ? a : b));
+    session.castSkill(front.x, front.y);
+  }
   // Team-Bank zuerst aufstellen (gratis)
   while (session.bench.length) {
     const spot = bestCells(session).find((cell) => session.canBuildAt(cell.c, cell.r));

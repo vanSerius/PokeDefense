@@ -1,11 +1,11 @@
 // Session: eine Map-Runde. Verwaltet Gegner, Tower, Projektile, Wellen,
 // Gold & Herzen. Die Run-übergreifenden Daten stecken in `run` (state.js).
-import { TILE, COLS, ROWS, WAVE_BONUS, SELL_REFUND, BOSS_HEART_DMG, TEAM_CAP } from '../config.js';
+import { TILE, COLS, ROWS, WAVE_BONUS, SELL_REFUND, BOSS_HEART_DMG, TEAM_CAP, BETWEEN_TIME, EARLY_CALL_RATE } from '../config.js';
 import { MAPS, buildPath, pathCells, pointAt } from '../data/maps.js';
 import { ENEMIES } from '../data/enemies.js';
 import { LINES } from '../data/pokemon.js';
 import { TRAINERS } from '../data/trainers.js';
-import { generateWaves, bountyScale } from '../data/waves.js';
+import { generateWaves, bountyScale, hpScale } from '../data/waves.js';
 import { makeRng } from '../core/rng.js';
 import { Enemy } from './enemy.js';
 import { Tower } from './tower.js';
@@ -46,7 +46,11 @@ export class Session {
     this.clouds = [];
     this.barriers = [];
     this.fx = [];
+    this.drops = [];               // antippbare Münzen/Bonbons
+    this.corpses = [];             // Tod-Animationen
     this.particles = new Particles();
+    this.skill = TRAINERS[run.trainer].skill || null;
+    this.skillCd = 0;
 
     this.waves = generateWaves(this.mapNo, run.seed);
     this.waveIdx = -1;                 // noch keine Welle gestartet
@@ -189,8 +193,94 @@ export class Session {
   // ---------- Wellen ----------
   get waveCount() { return this.waves.length; }
 
+  earlyCallBonus() {
+    return this.state === 'between' ? Math.round(this.betweenT * EARLY_CALL_RATE) : 0;
+  }
+
+  // ---------- Trainer-Fähigkeit ----------
+  castSkill(x, y) {
+    const sk = this.skill;
+    if (!sk || this.skillCd > 0) return false;
+    const scale = hpScale(this.mapNo, 1);
+    if (sk.target === 'point') {
+      if (sk.dmgBase) {
+        // Feuersturm
+        this.fx.push({ kind: 'ring', x, y, r0: 20, r1: sk.radius, t: 0, life: 0.5, color: '#ff8c42' });
+        this.particles.burst(x, y, '#ff8c42', 26, 180, { glow: true, life: 0.7 });
+        this.particles.burst(x, y, '#ffd166', 14, 120, { glow: true });
+        for (const e of this.enemies) {
+          if (e.dead || e.underground) continue;
+          if (Math.hypot(e.x - x, e.y - y) <= sk.radius) {
+            e.hit(sk.dmgBase * scale, 'feuer', this, null);
+            if (sk.burn) e.applyEffects({ burn: { dps: sk.burn.dpsBase * scale, dur: sk.burn.dur } }, this);
+          }
+        }
+        sfx.explosion();
+        this.shake(8);
+      } else if (sk.cloud) {
+        // Gifthagel
+        this.clouds.push({ x, y, radius: sk.radius, dps: sk.cloud.dpsBase * scale, slow: sk.cloud.slow, t: sk.cloud.dur, max: sk.cloud.dur, type: 'gift', tower: null });
+        this.fx.push({ kind: 'ring', x, y, r0: 20, r1: sk.radius, t: 0, life: 0.5, color: '#a040a0' });
+        this.particles.burst(x, y, '#a040a0', 20, 140, { glow: true });
+        sfx.hit();
+      }
+    } else {
+      // Global: Psychowelle / Erdbeben
+      if (sk.sleep) {
+        for (const e of this.enemies) {
+          if (e.dead) continue;
+          e.sleep = Math.max(e.sleep, sk.sleep * e.statusImmunityFactor);
+          if (sk.push) e.dist = Math.max(0, e.dist - sk.push * (e.boss ? 0.2 : 1));
+          this.particles.burst(e.x, e.y, '#f85888', 5, 60, { glow: true });
+        }
+        this.fx.push({ kind: 'ring', x: this.path.pts[0].x, y: this.path.pts[0].y, r0: 30, r1: 600, t: 0, life: 0.8, color: '#f85888' });
+        sfx.zap();
+        this.shake(5);
+      } else if (sk.dmgBase) {
+        for (const e of this.enemies) {
+          if (e.dead || (sk.groundOnly && e.move === 'fly')) continue;
+          e.hit(sk.dmgBase * scale, 'boden', this, null);
+          if (!e.dead && sk.stun) e.stun = Math.max(e.stun, sk.stun * e.statusImmunityFactor);
+          this.particles.burst(e.x, e.y + 8, '#c2a35d', 7, 90);
+        }
+        sfx.explosion();
+        this.shake(14);
+      }
+    }
+    this.skillCd = sk.cd;
+    return true;
+  }
+
+  // ---------- Drops (antippbar) ----------
+  collectDropAt(x, y) {
+    for (let i = this.drops.length - 1; i >= 0; i--) {
+      const d = this.drops[i];
+      if (Math.hypot(d.x - x, d.y - y) < 34) {
+        if (d.kind === 'coin') {
+          this.gold += d.value;
+          this.particles.number(d.x, d.y - 10, `+${d.value}`, '#ffcd75', 12);
+        } else {
+          this.run.candy++;
+          this.particles.number(d.x, d.y - 10, 'Sonderbonbon!', '#f85888', 10);
+        }
+        this.fx.push({ kind: 'coinfly', x: d.x, y: d.y, t: 0, life: 0.5 });
+        this.particles.burst(d.x, d.y, '#ffcd75', 8, 90, { glow: true });
+        sfx.gold();
+        this.drops.splice(i, 1);
+        return true;
+      }
+    }
+    return false;
+  }
+
   startWave() {
     if (this.state !== 'build' && this.state !== 'between') return false;
+    const bonus = this.earlyCallBonus();
+    if (bonus > 0) {
+      this.gold += bonus;
+      this.particles.number(this.path.pts[0].x + 40, this.path.pts[0].y - 20, `+${bonus}`, '#ffcd75', 13);
+      sfx.gold();
+    }
     this.waveIdx++;
     const wave = this.waves[this.waveIdx];
     if (!wave) return false;
@@ -339,10 +429,22 @@ export class Session {
   onEnemyKilled(enemy, source) {
     if (enemy.dead) return;
     enemy.dead = true;
+    // Tod-Animation (umkippen) + Münze fliegt zum Zähler
+    this.corpses.push({ dex: enemy.dex, x: enemy.x, y: enemy.y, t: 0, scale: enemy.scale, flip: enemy.dx < 0 });
+    this.fx.push({ kind: 'coinfly', x: enemy.x, y: enemy.y, t: 0, life: 0.55 });
+    // Live-Drops: Münze (12%) oder Sonderbonbon (1.5%)
+    if (!enemy.leaked) {
+      const roll = Math.random();
+      if (roll < 0.015) {
+        this.drops.push({ kind: 'candy', x: enemy.x, y: enemy.y, t: 6 });
+      } else if (roll < 0.135) {
+        this.drops.push({ kind: 'coin', x: enemy.x, y: enemy.y, t: 6, value: Math.round(4 + 4 * bountyScale(this.mapNo)) });
+      }
+    }
     let gold = enemy.bounty;
     if (source && source.attack && source.attack.effect && source.attack.effect.goldOnKill) {
       gold += source.attack.effect.goldOnKill;
-      this.particles.number(enemy.x, enemy.y - 10, `+${gold}◉`, '#ffcd75', 10);
+      this.particles.number(enemy.x, enemy.y - 10, `+${gold}`, '#ffcd75', 10);
       sfx.gold();
     }
     this.gold += gold;
@@ -351,7 +453,7 @@ export class Session {
     this.particles.burst(enemy.x, enemy.y, '#ffffff', enemy.boss ? 30 : 9, enemy.boss ? 160 : 85);
     if (enemy.boss || enemy.miniboss) {
       this.shake(enemy.boss ? 14 : 6);
-      this.particles.number(enemy.x, enemy.y - 30, `+${gold}◉`, '#ffcd75', 16);
+      this.particles.number(enemy.x, enemy.y - 30, `+${gold}`, '#ffcd75', 16);
     }
     sfx.kill();
   }
@@ -364,6 +466,15 @@ export class Session {
     if (this.state === 'won' || this.state === 'lost') return;
     this.time += dt;
     if (this.shakeT > 0) this.shakeT -= dt;
+    if (this.skillCd > 0) this.skillCd -= dt;
+    for (let i = this.drops.length - 1; i >= 0; i--) {
+      this.drops[i].t -= dt;
+      if (this.drops[i].t <= 0) this.drops.splice(i, 1);
+    }
+    for (let i = this.corpses.length - 1; i >= 0; i--) {
+      this.corpses[i].t += dt;
+      if (this.corpses[i].t > 0.55) this.corpses.splice(i, 1);
+    }
 
     // Spawnen
     if (this.state === 'wave' && this.spawnQueue.length) {
@@ -420,13 +531,13 @@ export class Session {
       const bonus = WAVE_BONUS + this.run.mods.waveGold;
       this.gold += bonus;
       sfx.waveDone();
-      this.particles.number(this.path.pts[0].x, this.path.pts[0].y, `+${bonus}◉`, '#ffcd75', 14);
+      this.particles.number(this.path.pts[0].x, this.path.pts[0].y, `+${bonus}`, '#ffcd75', 14);
       if (this.waveIdx >= this.waves.length - 1) {
         this.state = 'won';
         this.cb.onEnd && this.cb.onEnd('won');
       } else {
         this.state = 'between';
-        this.betweenT = 6;
+        this.betweenT = BETWEEN_TIME;
         this.cb.onWaveChange && this.cb.onWaveChange();
       }
       return;

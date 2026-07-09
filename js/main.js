@@ -10,7 +10,8 @@ import { newRun, applyItem, advanceRun, endRun } from './game/state.js';
 import { Session } from './game/session.js';
 import { serializeTower } from './game/tower.js';
 import { LINES } from './data/pokemon.js';
-import { renderMapBackground, drawFrame } from './render/renderer.js';
+import { drawFrame } from './render/renderer.js';
+import { renderBackgroundFrames, PALETTES } from './render/tiles.js';
 import { Hud } from './ui/hud.js';
 import * as screens from './ui/screens.js';
 
@@ -30,20 +31,22 @@ const ui = {
   ghostCell: null,
   selectedTower: null,
   swapMode: false,
+  skillTargeting: false,
+  skillGhost: null,
   toast: screens.toast,
 
   onTowerCardTap(slot, line) {
     unlockAudio();
     if (!session) return;
     if (!session.isUnlocked(slot)) {
-      screens.toast(`🔒 ${slot.unlockText}`);
+      screens.toast(`Gesperrt: ${slot.unlockText}`);
       sfx.error();
       return;
     }
     this.deselectTower();
     if (this.placing && this.placing.line === line && this.placing.benchIdx === null) { this.placing = null; return; }
     if (session.gold < line.cost) {
-      screens.toast(`Zu teuer! ${line.stages[0].name} kostet ◉${line.cost}`);
+      screens.toast(`Zu teuer! ${line.stages[0].name} kostet ${line.cost} Gold`);
       sfx.error();
       return;
     }
@@ -98,7 +101,7 @@ const ui = {
   startSwap() {
     if (!this.selectedTower) return;
     this.swapMode = true;
-    screens.toast('⇄ Tippe einen anderen Tower zum Tauschen! (Tausch-Evos entwickeln sich)');
+    screens.toast('Tippe einen anderen Tower zum Tauschen! (Tausch-Evos entwickeln sich)');
     sfx.click();
   },
 };
@@ -126,15 +129,27 @@ function canvasCell(ev) {
 }
 
 canvas.addEventListener('pointermove', (ev) => {
-  if (!session || !ui.placing) return;
-  const { c, r } = canvasCell(ev);
-  ui.ghostCell = [c, r];
+  if (!session) return;
+  const { x, y, c, r } = canvasCell(ev);
+  if (ui.skillTargeting) ui.skillGhost = [x, y];
+  if (ui.placing) ui.ghostCell = [c, r];
 });
 
 canvas.addEventListener('pointerdown', (ev) => {
   if (!session) return;
   unlockAudio();
-  const { c, r } = canvasCell(ev);
+  const { x, y, c, r } = canvasCell(ev);
+
+  // 1) Skill-Zielmodus
+  if (ui.skillTargeting) {
+    ui.skillTargeting = false;
+    ui.skillGhost = null;
+    session.castSkill(x, y);
+    return;
+  }
+
+  // 2) Drops einsammeln
+  if (session.collectDropAt(x, y)) return;
 
   if (ui.placing) {
     ui.ghostCell = [c, r];
@@ -164,6 +179,37 @@ canvas.addEventListener('pointerdown', (ev) => {
   if (t) ui.selectTower(t);
   else ui.deselectTower();
 });
+
+// ---------- Skill-Button ----------
+const skillBtn = document.getElementById('skillbtn');
+skillBtn.addEventListener('click', () => {
+  unlockAudio();
+  if (!session || !session.skill) return;
+  if (session.skillCd > 0) {
+    screens.toast(`${session.skill.name} lädt noch ${Math.ceil(session.skillCd)}s…`);
+    sfx.error();
+    return;
+  }
+  if (session.skill.target === 'point') {
+    ui.skillTargeting = !ui.skillTargeting;
+    ui.skillGhost = null;
+    if (ui.skillTargeting) screens.toast(`${session.skill.name}: Ziel auf dem Feld antippen!`);
+  } else {
+    session.castSkill(0, 0);
+  }
+  sfx.click();
+});
+
+function updateSkillBtn() {
+  if (!session || !session.skill) { skillBtn.classList.add('hidden'); return; }
+  skillBtn.classList.remove('hidden');
+  const cooling = session.skillCd > 0;
+  skillBtn.classList.toggle('cooling', cooling);
+  skillBtn.classList.toggle('targeting', ui.skillTargeting);
+  const nameEl = skillBtn.querySelector('.sk-name');
+  const text = cooling ? `${Math.ceil(session.skillCd)}s` : session.skill.name.slice(0, 10);
+  if (nameEl.textContent !== text) nameEl.textContent = text;
+}
 
 // ---------- Topbar-Buttons ----------
 document.getElementById('btn-wave').addEventListener('click', () => {
@@ -227,7 +273,13 @@ function startMap() {
     onBoss: screens.showBossBanner,
     onEnd: (result) => setTimeout(() => onMapEnd(result), 900),
   });
-  session.bg = renderMapBackground(session);
+  session.bgFrames = renderBackgroundFrames(session);
+  if (session.skill) {
+    skillBtn.querySelector('.sk-icon').innerHTML =
+      `<img src="assets/sprites/static/${session.skill.icon}.png" style="width:26px;height:26px;image-rendering:pixelated" alt="">`;
+    screens.toast(`Trainer-Skill bereit: ${session.skill.name} – ${session.skill.desc}`);
+  }
+  document.getElementById('stage').style.background = PALETTES[session.map.biome].frame;
   hud.buildTowerbar(session);
   hud.updateSpeedBtn(speedIdx);
   hud.updateMuteBtn(isMuted());
@@ -284,6 +336,7 @@ function loop(t) {
   }
   drawFrame(ctx, session, ui);
   hud.update(session);
+  updateSkillBtn();
 }
 
 // ---------- Start ----------
